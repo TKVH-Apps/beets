@@ -4,3 +4,4 @@ namespace: beets
 resources:
   - beets-deploy.yml
   - beets-pvc.yml
+  - beets-ns.yml
