@@ -1,48 +1,65 @@
-kind: Deployment
-apiVersion: apps/v1
+kind: CronJob
+apiVersion: batch/v1
 metadata:
   name: beets
   labels:
     app: beets
     part-of: beets
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: beets
-      part-of: beets
-  template:
-    metadata:
-      labels:
-        app: beets
-        part-of: beets
+  schedule: "*/60 * * * *"
+  jobTemplate:
     spec:
-      containers:
-      - name: beets
-        image: ghcr.io/linuxserver/beets:1.4.9-ls94
-        env:
-        - name: PUID
-          value: "1000"
-        - name: PGID
-          value: "1000"
-        - name: TZ
-          value: "Europe/Paris"
-        - name: UMASK
-          value: "022"
-        volumeMounts:
-        - name: beets
-          mountPath: /config
-        - name: musics
-          mountPath: /music
-        - name: downloads
-          mountPath: /downloads/musics
-      volumes:
-      - name: beets
-        persistentVolumeClaim:
-          claimName: beets
-      - name: musics
-        persistentVolumeClaim:
-          claimName: musics
-      - name: downloads
-        persistentVolumeClaim:
-          claimName: downloads
+      ttlSecondsAfterFinished: 100
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: beets
+          containers:
+          - name: beets
+            image: ghcr.io/linuxserver/beets:1.4.9-ls94
+            command:
+            - /bin/bash
+            - -c
+            - |
+              beet update && beet import /downloads
+              curl -v -d "" -H "X-MediaBrowser-Token: $JELLYFIN_TOKEN" http://jellyfin.jellyfin:8096/library/refresh
+            env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "Europe/Paris"
+            - name: UMASK
+              value: "022"
+            - name: JELLYFIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: beets
+                  key: JELLYFIN_TOKEN
+            volumeMounts:
+            - name: beets
+              mountPath: /config
+            - name: musics
+              mountPath: /music
+            - name: downloads
+              mountPath: /downloads/musics
+            - name: beets-secrets
+              mountPath: "/mnt/vault"
+              readOnly: true
+          volumes:
+          - name: beets
+            persistentVolumeClaim:
+              claimName: beets
+          - name: musics
+            persistentVolumeClaim:
+              claimName: musics
+          - name: downloads
+            persistentVolumeClaim:
+              claimName: downloads
+          - name: beets-secrets
+            csi:
+              driver: "secrets-store.csi.k8s.io"
+              readOnly: true
+              volumeAttributes:
+                secretProviderClass: "beets"

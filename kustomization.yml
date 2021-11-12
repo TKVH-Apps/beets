@@ -5,3 +5,5 @@ resources:
   - beets-deploy.yml
   - beets-pvc.yml
   - beets-ns.yml
+  - beets-sa.yml
+  - beets-spc.yml
