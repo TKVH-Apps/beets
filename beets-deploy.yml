@@ -6,7 +6,7 @@ metadata:
     app: beets
     part-of: beets
 spec:
-  schedule: "*/60 * * * *"
+  schedule: "*/15 * * * *"
   jobTemplate:
     spec:
       ttlSecondsAfterFinished: 100
